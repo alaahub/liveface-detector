@@ -1,0 +1,317 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Dashboard — LiveFace</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* التنسيقات العامة والخطوط */
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #f0f2f5; 
+      margin: 0;
+      padding: 30px;
+      color: #344767;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+    h2 {
+      margin-bottom: 35px;
+      color: #344767;
+      font-weight: 600;
+      font-size: 2rem;
+      text-align: center;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e0e6ed;
+      width: 90%;
+      max-width: 1000px;
+    }
+
+    /* تحسين تصميم البطاقات (Cards) */
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 20px; /* تقليل التباعد قليلاً لاستيعاب 5 بطاقات */
+      flex-wrap: wrap; 
+      margin-bottom: 40px;
+      width: 90%;
+      max-width: 1000px; /* زيادة العرض لاستيعاب البطاقات الخمس */
+    }
+    .card {
+      background: linear-gradient(195deg, #ffffff, #f0f2f5);
+      border-radius: 15px; 
+      padding: 20px; /* تقليل البادينغ قليلاً */
+      box-shadow: 0 8px 20px 0 rgba(0, 0, 0, 0.08);
+      text-align: center;
+      min-width: 150px; /* تقليل الحد الأدنى للعرض */
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      flex-grow: 1; 
+      flex-basis: 18%; /* محاولة عرض 5 بطاقات في صف واحد */
+    }
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 14px 28px rgba(0,0,0,0.1), 0 10px 10px rgba(0,0,0,0.06);
+    }
+    .card h3 {
+      margin: 0 0 12px;
+      font-size: 0.95rem; /* تعديل الحجم */
+      color: #e0e0e0; 
+      font-weight: 500;
+    }
+    .card p {
+      margin: 0;
+      font-size: 1.8rem; /* تعديل الحجم */
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    /* الألوان المخصصة للخلفية المتدرجة للبطاقات الخمس */
+    /* Total Scans (Gray/Silver) - جديد */
+    .card[style*="#95a5a6"] { border-top: none; background: linear-gradient(195deg, #aab7c4, #8894a4); }
+    /* Real Faces (Green) */
+    .card[style*="#2ecc71"] { border-top: none; background: linear-gradient(195deg, #66bb6a, #43a047); } 
+    /* Fake Faces (Red) */
+    .card[style*="#e74c3c"] { border-top: none; background: linear-gradient(195deg, #ef5350, #d32f2f); } 
+    /* Accuracy (Blue) */
+    .card[style*="#3498db"] { border-top: none; background: linear-gradient(195deg, #42a5f5, #1e88e5); } 
+    /* Average Confidence (Purple) - جديد */
+    .card[style*="#9b59b6"] { border-top: none; background: linear-gradient(195deg, #a481dc, #8e44ad); } 
+    
+    /* ضمان ظهور الأرقام والعناوين باللون الأبيض على التدرجات */
+    .card[style*="background"] h3, .card[style*="background"] p { color: #ffffff !important; }
+
+
+    /* تحسين تصميم رسوم Chart.js */
+    .charts {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 20px;
+      flex-wrap: nowrap; /* ******* مفتاح جعل المخططات جنباً إلى جنب ******* */
+      max-width: 800px;
+    }
+    .chart-box {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px 0 rgba(0, 0, 0, 0.08);
+      padding: 25px 15px; /* تقليل البادينغ الأفقي */
+      width: 380px; 
+      min-height: 350px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .chart-box h3 {
+      font-weight: 600;
+      color: #344767;
+      margin-bottom: 15px;
+    }
+    .chart-box canvas {
+      width: 100% !important;
+      max-height: 200px !important; /* تقليل ارتفاع المخطط لتوفير مساحة */
+    }
+    #accText {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #1a73e8;
+    }
+    .chart-box p {
+      margin-top: 15px !important;
+      font-weight: 500;
+      color: #67748e;
+    }
+
+    /* تحسين مظهر الأزرار */
+    .actions {
+      text-align: center;
+      margin-top: 40px;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 20px;
+      border-radius: 10px; 
+      text-decoration: none;
+      color: #fff;
+      margin: 8px;
+      font-weight: 600;
+      transition: all 0.3s;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .btn-primary { 
+      background: linear-gradient(195deg, #42a5f5, #1e88e5); 
+    }
+    .btn-green { 
+      background: linear-gradient(195deg, #66bb6a, #43a047); 
+    }
+    .btn-gray { 
+      background: linear-gradient(195deg, #90a4ae, #757575); 
+    }
+    .btn:hover { 
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+    
+    /* التعديل على الخطوط والأحجام في شاشات الجوال */
+    @media (max-width: 850px) {
+        .charts {
+            flex-wrap: wrap; /* السماح بالالتفاف في الجوال */
+            max-width: 100%;
+        }
+        .chart-box {
+            width: 100%; 
+            max-width: 400px;
+            margin-bottom: 20px;
+        }
+        .stats { gap: 15px; }
+        .card { 
+            flex-basis: 46%; /* عرض بطاقتين في كل صف */
+            min-width: unset;
+        }
+    }
+
+  </style>
+</head>
+<body>
+
+  <h2>📊 LiveFace Detection Dashboard</h2>
+
+  <div id="dashboard-data"
+    data-total-real="{{ total_real|default:0|floatformat:0 }}"
+    data-total-fake="{{ total_fake|default:0|floatformat:0 }}"
+    data-accuracy="{{ accuracy|default:'0.0' }}"
+    data-avg-confidence="{{ avg_confidence|default:'0.0' }}">
+  </div>
+
+  <div class="stats">
+    
+    <div class="card" style="background: #95a5a6;"> 
+      <h3>Total Scans</h3>
+      <p id="total-scans-count">--</p>
+    </div>
+
+    <div class="card" style="background: #2ecc71;"> 
+      <h3>Real Faces</h3>
+      <p id="real-count">--</p>
+    </div>
+    
+    <div class="card" style="background: #e74c3c;">
+      <h3>Fake Faces</h3>
+      <p id="fake-count">--</p>
+    </div>
+    
+    <div class="card" style="background: #3498db;">
+      <h3>Accuracy</h3>
+      <p id="acc-count">--%</p>
+    </div>
+    
+    <div class="card" style="background: #9b59b6;"> 
+      <h3>Avg. Confidence</h3>
+      <p id="conf-count">--%</p>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="chart-box">
+      <h3>Real vs Fake Distribution</h3>
+      <canvas id="pieChart"></canvas>
+    </div>
+
+    <div class="chart-box">
+      <h3>Model Performance</h3>
+      <canvas id="accuracyChart"></canvas>
+      <p style="margin-top:8px;font-weight:600;color:#2c3e50;">Current Accuracy: <span id="accText">--%</span></p>
+    </div>
+  </div>
+
+  <div class="actions">
+    <a href="{% url 'detector:upload_page' %}" class="btn btn-primary">📤 Upload Face</a>
+    <a href="{% url 'detector:camera_page' %}" class="btn btn-green">📷 Live Camera Test</a>
+    <a href="{% url 'detector:results_page' %}" class="btn btn-gray">🖼️ View All Results</a>
+  </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const data = document.getElementById('dashboard-data');
+  
+  // استرجاع جميع البيانات الجديدة والقديمة
+  const real = Number(data.dataset.totalReal) || 0;
+  const fake = Number(data.dataset.totalFake) || 0;
+  const acc = parseFloat(data.dataset.accuracy) || 0;
+  const avgConf = parseFloat(data.dataset.avgConfidence) || 0;
+  
+  // حساب إجمالي الوجوه المفحوصة
+  const totalScans = real + fake;
+  
+  // تنسيق الأرقام
+  const acc_fixed = acc.toFixed(1);
+  const conf_fixed = avgConf.toFixed(1);
+
+  // 1. تحديث بطاقات الإحصائيات (Stats Cards)
+  document.getElementById('total-scans-count').textContent = totalScans.toLocaleString('en-US');
+  document.getElementById('real-count').textContent = real.toLocaleString('en-US');
+  document.getElementById('fake-count').textContent = fake.toLocaleString('en-US');
+  document.getElementById('acc-count').textContent = acc_fixed + '%';
+  document.getElementById('conf-count').textContent = conf_fixed + '%'; // تحديث بطاقة الثقة
+  
+  document.getElementById('accText').textContent = acc_fixed + '%';
+
+  // 2. تحديث مخطط الدائرة (Real vs Fake)
+  new Chart(document.getElementById('pieChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Real', 'Fake'],
+      datasets: [{
+        data: [real, fake],
+        backgroundColor: ['#4CAF50', '#FF5722'], 
+        hoverBackgroundColor: ['#66BB6A', '#FF7043'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } },
+        title: { display: false }
+      },
+      layout: { padding: { top: 10 } },
+      cutout: '75%'
+    }
+  });
+
+  // 3. تحديث مخطط الدقة (Accuracy Chart)
+  new Chart(document.getElementById('accuracyChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Accuracy', 'Remaining'],
+      datasets: [{
+        data: [acc, 100 - acc],
+        backgroundColor: ['#1E88E5', '#E0E0E0'],
+        hoverBackgroundColor: ['#42A5F5', '#BDBDBD'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '80%', 
+      plugins: { legend: { display: false }, title: { display: false } },
+      rotation: 270, 
+      circumference: 180, 
+      tooltips: {
+          enabled: false
+      }
+    }
+  });
+});
+</script>
+
+</body>
+</html>

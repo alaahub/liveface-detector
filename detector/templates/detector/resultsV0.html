@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Live Image Detector — Results</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .grid { display:flex; flex-wrap:wrap; gap:12px; }
+    .item { width:200px; border:2px solid #ccc; padding:6px; border-radius:8px; }
+    .item.real { border-color: green; }
+    .item.fake { border-color: red; }
+    img { width:100%; height:150px; object-fit:cover; display:block; border-radius:6px; }
+    .label { margin-top:6px; font-weight:bold; }
+  </style>
+</head>
+<body>
+  <h1>Recent Analyses</h1>
+  <p><a href="{% url 'detector:upload_page' %}">Upload more images</a></p>
+  <div class="grid">
+    {% for log in logs %}
+      <div class="item {% if log.result == 'real' %}real{% elif log.result == 'fake' %}fake{% endif %}">
+        <img src="{{ log.image.url }}" alt="image {{ log.pk }}">
+        <div class="label">
+          {% if log.result == 'real' %}
+            ✅ Real
+          {% elif log.result == 'fake' %}
+            ❌ Fake
+          {% else %}
+            ⚪ Pending
+          {% endif %}
+        </div>
+        <!-- Later we'll add buttons for correct / incorrect here -->
+      </div>
+    {% empty %}
+      <p>No analyzed images yet.</p>
+    {% endfor %}
+  </div>
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Detection Results</h2>
+    <form action="{% url 'detector:clear_results' %}" method="post" style="margin:0;">
+        {% csrf_token %}
+        <button type="submit" style="
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        ">
+            🗑️ Clear Results
+        </button>
+    </form>
+</div>
+
+</body>
+</html>

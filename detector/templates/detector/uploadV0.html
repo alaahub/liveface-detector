@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Live Image Detector — Upload</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .container { max-width:800px; margin:auto; }
+    .card { border:1px solid #ddd; padding:20px; border-radius:8px; }
+    input[type=file] { display:block; margin:10px 0; }
+    button { padding:10px 15px; border:none; background:#1976d2; color:white; border-radius:6px; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Live Image Detector — Upload Images</h1>
+    <div class="card">
+      <form method="post" action="{% url 'detector:process_uploads' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label>Select one or more images:</label>
+        <input type="file" name="images" accept="image/*" multiple required>
+        <p>You can select multiple files. After upload, images will be processed.</p>
+        <button type="submit">Upload & Analyze</button>
+      </form>
+    </div>
+    <p style="margin-top:15px;"><a href="{% url 'detector:results_page' %}">View recent results</a></p>
+  </div>
+</body>
+</html>

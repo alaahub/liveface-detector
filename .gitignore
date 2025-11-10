@@ -1,0 +1,16 @@
+# Python
+*.pyc
+__pycache__/
+*.egg-info/
+.pytest_cache/
+
+# Environment
+venv/
+env/
+.env
+
+# Django specific
+*.log
+local_settings.py
+db.sqlite3
+/media

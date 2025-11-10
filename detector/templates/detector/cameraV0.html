@@ -1,0 +1,110 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Live Camera Detection</title>
+    <style>
+        body {
+            font-family: "Segoe UI", sans-serif;
+            background-color: #f7f9fb;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        video {
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            width: 640px;
+            height: 480px;
+            background-color: #000;
+        }
+        canvas {
+            position: absolute;
+        }
+        #result-box {
+            margin-top: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        #back-btn {
+            margin-top: 20px;
+            padding: 8px 16px;
+            border: none;
+            background-color: #3498db;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        #back-btn:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <h2>Live Face Liveness Detection</h2>
+
+    <video id="video" autoplay playsinline></video>
+    <div id="result-box">Waiting for camera...</div>
+
+    <!-- ✅ تم تعديل السطر ليكون أكثر أمانًا -->
+    <button id="back-btn" data-url="{% url 'detector:results_page' %}">
+        ← Back to Results
+    </button>
+
+    <script>
+        const video = document.getElementById('video');
+        const resultBox = document.getElementById('result-box');
+        const backBtn = document.getElementById('back-btn');
+
+        // ✅ زر الرجوع
+        backBtn.addEventListener('click', () => {
+            window.location.href = backBtn.dataset.url;
+        });
+
+        // ✅ تشغيل الكاميرا
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                alert("Camera access denied: " + err);
+            });
+
+        // ✅ إرسال إطار كل 2 ثانية للسيرفر للتحليل
+        setInterval(async () => {
+            if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+            const formData = new FormData();
+            formData.append('frame', blob, 'frame.jpg');
+
+            try {
+                const response = await fetch("{% url 'detector:process_frame' %}", {
+                    method: "POST",
+                    body: formData,
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                });
+                const data = await response.json();
+                resultBox.innerHTML =
+                    data.result === 'real' ? '🟢 Real Face Detected' :
+                    data.result === 'fake' ? '🔴 Fake Face Detected' :
+                    '⚪ No face detected';
+                resultBox.style.color =
+                    data.result === 'real' ? 'green' :
+                    data.result === 'fake' ? 'red' : 'gray';
+            } catch (err) {
+                console.error(err);
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

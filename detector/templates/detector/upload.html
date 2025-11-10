@@ -1,0 +1,313 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload Images — LiveFace</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* 1. التنسيقات الأساسية والخطوط */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f0f2f5; /* لون متناسق مع الداشبورد */
+            margin: 0;
+            color: #344767;
+            min-height: 100vh;
+        }
+
+        /* 2. شريط التنقل (Navbar) المحسّن */
+        nav {
+            background: linear-gradient(195deg, #344767, #1e2c3d); /* تدرج لوني داكن */
+            color: white;
+            padding: 15px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        nav h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            margin-left: 25px;
+            font-weight: 500;
+            transition: 0.3s;
+            padding-bottom: 3px;
+        }
+        .nav-links a:hover {
+            color: #1abc9c;
+            border-bottom: 2px solid #1abc9c; /* تأثير هوفر جذاب */
+        }
+        .nav-links a.active {
+            color: #1abc9c;
+            border-bottom: 2px solid #1abc9c;
+        }
+
+        /* 3. حاوية الرفع الرئيسية */
+        .container {
+            max-width: 650px; /* زيادة العرض قليلاً */
+            margin: 60px auto;
+            background: white;
+            border-radius: 18px; /* حواف أكثر استدارة */
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); /* ظل أعمق */
+            text-align: center;
+        }
+        h2 {
+            color: #344767;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        p {
+            color: #6c757d;
+            margin-bottom: 35px;
+            font-size: 1rem;
+            font-weight: 400;
+        }
+
+        /* 4. صندوق الرفع (Upload box) المحسّن */
+        .upload-box {
+            border: 2px dashed #a5b3c4; /* حدود فاتحة أكثر هدوءًا */
+            border-radius: 12px;
+            padding: 50px 20px;
+            background: #fff;
+            transition: 0.3s;
+            cursor: pointer;
+            display: block; /* لضمان أن الـ Label يغطي المنطقة بالكامل */
+        }
+        .upload-box:hover {
+            background: #f7f9fc;
+            border-color: #3498db; /* اللون الأزرق يظهر عند التفاعل */
+        }
+        .upload-box input[type="file"] {
+            display: none;
+        }
+        .upload-box p {
+            margin: 5px 0 0 0;
+            font-size: 1.1rem;
+            color: #3498db;
+            font-weight: 600;
+        }
+        .upload-icon {
+            font-size: 3rem; /* حجم كبير للأيقونة */
+            color: #3498db;
+            display: block;
+            margin-bottom: 10px;
+        }
+        .upload-box.dragging { /* لتأثير السحب */
+            border-style: solid;
+            background: #eaf5ff;
+        }
+        
+        /* 5. زر التحليل (Analyze Button) المحسّن */
+        #analyze-button {
+            background: linear-gradient(195deg, #42a5f5, #1e88e5);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 35px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(50, 50, 93, 0.1), 0 2px 5px rgba(0, 0, 0, 0.07);
+            transition: all 0.3s;
+        }
+        #analyze-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(50, 50, 93, 0.15), 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        #analyze-button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+
+        /* 6. معاينة الصور (Image preview) */
+        .preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 35px;
+            max-height: 200px; /* لتقييد الارتفاع */
+            overflow-y: auto; /* لإضافة شريط تمرير عند زيادة الصور */
+            padding: 10px;
+        }
+        .preview-container img {
+            width: 90px;
+            height: 90px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: 0.2s;
+        }
+        .preview-container img:hover {
+             transform: scale(1.05);
+        }
+        
+        /* 7. شريط التحميل (Loading Bar) - جديد */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+            color: #3498db;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+
+        /* 8. تذييل الصفحة (Footer) */
+        footer {
+            text-align: center;
+            color: #aeb8c3;
+            margin: 40px 0 20px 0;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <h1>LiveFace Detection</h1>
+        <div class="nav-links">
+            
+            <a href="{% url 'detector:upload_page' %}" class="active">Upload</a>
+            <a href="{% url 'detector:camera_page' %}">Camera</a>
+            <a href="{% url 'detector:results_page' %}">Results</a>
+            <a href="{% url 'detector:dashboard' %}">Dashboard</a>
+            <a href="{% url 'detector:about_page' %}">About</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2>Upload Images for Analysis</h2>
+        <p>Choose or drag your images here to detect fake or real faces. Max 10 images, formats: JPG, PNG.</p>
+
+        <form id="upload-form" action="{% url 'detector:process_uploads' %}" method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <label for="images" class="upload-box" id="drop-area">
+                <span class="upload-icon">⬆️</span>
+                <p id="upload-text">Drag & Drop or Click to Select Images</p>
+                <input type="file" id="images" name="images" accept="image/jpeg, image/png" multiple>
+            </label>
+
+            <div class="preview-container" id="preview"></div>
+            
+            <button type="submit" id="analyze-button" disabled>Analyze Images (0)</button>
+        </form>
+    </div>
+
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="spinner"></div>
+        <span>Analyzing images, please wait...</span>
+    </div>
+
+    <footer>© 2025 LiveFace Project — Detect and Prevent Deepfake Misuse</footer>
+
+    <script>
+        const input = document.getElementById("images");
+        const preview = document.getElementById("preview");
+        const dropArea = document.getElementById("drop-area");
+        const analyzeButton = document.getElementById("analyze-button");
+        const uploadText = document.getElementById("upload-text");
+        const loadingOverlay = document.getElementById("loading-overlay");
+
+        // ✅ تحديث المعاينة وتفعيل الزر
+        function updatePreview() {
+            preview.innerHTML = "";
+            const files = input.files;
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const img = document.createElement("img");
+                        img.src = e.target.result;
+                        preview.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+            
+            // تفعيل/تعطيل الزر وتحديث نصه
+            const fileCount = input.files.length;
+            if (fileCount > 0) {
+                analyzeButton.disabled = false;
+                analyzeButton.textContent = `Analyze Images (${fileCount})`;
+            } else {
+                analyzeButton.disabled = true;
+                analyzeButton.textContent = `Analyze Images (0)`;
+            }
+        }
+
+        input.addEventListener("change", updatePreview);
+        
+        // ✅ Drag & Drop functionality
+        dropArea.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dropArea.classList.add('dragging');
+            uploadText.textContent = "Drop your files here to upload...";
+        });
+
+        dropArea.addEventListener("dragleave", () => {
+            dropArea.classList.remove('dragging');
+            uploadText.textContent = "Drag & Drop or Click to Select Images";
+        });
+
+        dropArea.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropArea.classList.remove('dragging');
+            uploadText.textContent = "Drag & Drop or Click to Select Images";
+            
+            // نقل الملفات المسحوبة إلى حقل الإدخال
+            const dataTransfer = new DataTransfer();
+            Array.from(e.dataTransfer.files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    dataTransfer.items.add(file);
+                }
+            });
+            input.files = dataTransfer.files;
+            updatePreview();
+        });
+        
+        // ✅ شريط التحميل (Loading Bar) عند الإرسال
+        document.getElementById("upload-form").addEventListener("submit", function() {
+             if (input.files.length > 0) {
+                 loadingOverlay.style.display = 'flex';
+             }
+        });
+        
+        // إعداد أولي للزر عند تحميل الصفحة
+        updatePreview();
+    </script>
+</body>
+</html>

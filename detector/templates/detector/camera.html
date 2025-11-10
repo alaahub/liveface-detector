@@ -1,0 +1,315 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Live Camera Detection — LiveFace</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* 1. التنسيقات الأساسية */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f2f5; /* لون متناسق */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 20px;
+            color: #344767;
+        }
+        h2 {
+            font-weight: 600;
+            margin-bottom: 30px;
+        }
+        
+        /* 2. حاوية الفيديو والـ Canvas */
+        .video-container {
+            position: relative;
+            width: 640px;
+            height: 480px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15); /* ظل احترافي */
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+        video, canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 15px;
+        }
+
+        /* 3. صندوق النتائج والتحكم */
+        #result-box {
+            background: white;
+            border-radius: 12px;
+            padding: 20px 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            text-align: center;
+            width: 80%;
+            max-width: 450px;
+        }
+        
+        /* مؤشر حالة النظام */
+        #status-text {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4em;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            background-color: #95a5a6; /* رمادي لـ Waiting */
+            border-radius: 50%;
+            margin-left: 10px;
+            box-shadow: 0 0 5px #95a5a6;
+            transition: all 0.5s;
+        }
+
+        /* شريط الثقة/التقدم */
+        .progress-container {
+            width: 100%;
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+            margin-top: 10px;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #f0f2f5, #2ecc71); /* تدرج افتراضي */
+            border-radius: 10px;
+            transition: width 0.6s ease, background-color 0.6s ease, box-shadow 0.6s ease;
+        }
+        
+        /* 4. الأزرار */
+        .action-btns {
+            margin-top: 30px;
+            display: flex;
+            gap: 20px;
+        }
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+        }
+        
+        #back-btn { 
+            background: linear-gradient(195deg, #42a5f5, #1e88e5); 
+        }
+        #stop-btn {
+            background: linear-gradient(195deg, #ff7043, #e74c3c); 
+            display: none; /* يتم عرضه بعد بدء التشغيل */
+        }
+        
+        /* 5. تنسيقات شاشات الجوال */
+        @media (max-width: 680px) {
+            .video-container {
+                width: 90vw;
+                height: 67.5vw; /* الحفاظ على نسبة 4:3 */
+            }
+            #result-box {
+                width: 90%;
+            }
+            .action-btns {
+                flex-direction: column;
+                gap: 15px;
+                width: 90%;
+            }
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h2>🎥 Live Face Liveness Detection</h2>
+
+    <div class="video-container">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="overlay"></canvas>
+    </div>
+
+    <div id="result-box">
+        <div id="status-text">
+            Waiting for camera...
+            <span class="status-indicator" id="status-indicator"></span>
+        </div>
+        <p id="guidance-text" style="color:#67748e; font-size: 0.9rem; margin-top:-10px;">
+            Please allow camera access and look directly into the camera.
+        </p>
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+    </div>
+
+    <div class="action-btns">
+        <button id="stop-btn" class="btn">🛑 Stop Live Stream</button>
+        <a href="{% url 'detector:results_page' %}" id="back-btn" class="btn">
+            ← Back to Results
+        </a>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const overlay = document.getElementById('overlay');
+        const ctx = overlay.getContext('2d');
+        const statusText = document.getElementById('status-text');
+        const statusIndicator = document.getElementById('status-indicator');
+        const progressBar = document.getElementById('progress-bar');
+        const stopBtn = document.getElementById('stop-btn');
+        const guidanceText = document.getElementById('guidance-text');
+        
+        let streamInterval = null;
+
+        // ✅ 1. بدء تشغيل الكاميرا
+        function startCamera() {
+            navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+                .then(stream => {
+                    video.srcObject = stream;
+                    video.onloadedmetadata = () => {
+                        video.play();
+                        statusText.innerHTML = "Initializing AI model...";
+                        statusIndicator.style.backgroundColor = "#f1c40f"; // Yellow
+                        guidanceText.textContent = "Processing... Please wait for the first result.";
+                        stopBtn.style.display = 'inline-block';
+                        startDetectionLoop();
+                    };
+                })
+                .catch(err => {
+                    statusText.innerHTML = "❌ Camera Access Denied";
+                    statusText.style.color = "#e74c3c";
+                    guidanceText.textContent = "Please ensure camera permissions are granted.";
+                    console.error("Camera access denied: ", err);
+                });
+        }
+        
+        // ✅ 2. إيقاف البث والتكرار
+        function stopStream() {
+            if (streamInterval) {
+                clearInterval(streamInterval);
+                streamInterval = null;
+            }
+            const stream = video.srcObject;
+            if (stream) {
+                const tracks = stream.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+            video.srcObject = null;
+            statusText.innerHTML = "⚪ Stream Stopped";
+            statusText.style.color = "gray";
+            statusIndicator.style.backgroundColor = "#95a5a6";
+            guidanceText.textContent = "Live detection is paused. Click 'Back to Results' to exit.";
+            stopBtn.style.display = 'none';
+            ctx.clearRect(0, 0, overlay.width, overlay.height);
+        }
+
+        // ✅ 3. حلقة الكشف (إرسال الإطار)
+        function startDetectionLoop() {
+             // إرسال الإطار كل 1500 مللي ثانية (1.5 ثانية)
+            streamInterval = setInterval(async () => {
+                if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+                overlay.width = video.videoWidth;
+                overlay.height = video.videoHeight;
+
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const tempCtx = canvas.getContext('2d');
+                tempCtx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8)); // ضغط الجودة قليلاً لسرعة الإرسال
+                const formData = new FormData();
+                formData.append('frame', blob, 'frame.jpg');
+
+                try {
+                    const response = await fetch("{% url 'detector:process_frame' %}", {
+                        method: "POST",
+                        body: formData,
+                        headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+                    });
+                    const data = await response.json();
+
+                    const confidence = (data.confidence || 0.0) * 100;
+                    let label = data.result || "no_face";
+                    
+                    // تحديث الحالة واللون
+                    updateStatus(label, confidence);
+
+                    // رسم المستطيل
+                    ctx.clearRect(0, 0, overlay.width, overlay.height);
+                    if (data.bbox) {
+                        const [x, y, w, h] = data.bbox;
+                        ctx.lineWidth = 4;
+                        ctx.strokeStyle = label === "real" ? "#2ecc71" : "#e74c3c";
+                        ctx.strokeRect(x, y, w, h);
+                        
+                        // إضافة النص فوق المستطيل (اختياري)
+                        ctx.fillStyle = ctx.strokeStyle;
+                        ctx.font = 'bold 20px Poppins';
+                        const text = `${label.toUpperCase()} (${confidence.toFixed(1)}%)`;
+                        ctx.fillText(text, x, y > 20 ? y - 10 : y + h + 25);
+                    }
+                } catch (err) {
+                    // رسالة خطأ عند فشل الاتصال بالخادم
+                    console.error("Detection Error:", err);
+                    statusText.innerHTML = "⚠️ Connection Error";
+                    statusText.style.color = "#e67e22";
+                    statusIndicator.style.backgroundColor = "#e67e22";
+                    guidanceText.textContent = "Lost connection to the analysis server.";
+                }
+            }, 1500); 
+        }
+
+        // ✅ 4. وظيفة تحديث الحالة البصرية
+        function updateStatus(label, confidence) {
+            let color, text;
+            const barPercentage = confidence;
+            
+            if (label === "real") {
+                color = "#2ecc71"; // أخضر
+                text = `🟢 Real Face (${confidence.toFixed(1)}%)`;
+                guidanceText.textContent = "Face confirmed as genuine. System is stable.";
+            } else if (label === "fake") {
+                color = "#e74c3c"; // أحمر
+                text = `🔴 Fake Face (${confidence.toFixed(1)}%)`;
+                guidanceText.textContent = "Warning! Potential deepfake detected.";
+            } else {
+                color = "#95a5a6"; // رمادي
+                text = "⚪ No Face Detected";
+                guidanceText.textContent = "Please ensure your face is fully visible in the frame.";
+            }
+            
+            // تحديث العناصر
+            statusText.innerHTML = text;
+            statusText.style.color = color;
+            statusIndicator.style.backgroundColor = color;
+            progressBar.style.width = `${barPercentage}%`;
+            progressBar.style.background = `linear-gradient(90deg, #f0f2f5, ${color})`;
+        }
+        
+        // ربط زر الإيقاف
+        stopBtn.addEventListener('click', stopStream);
+
+        // بدء التشغيل عند تحميل الصفحة
+        startCamera();
+    </script>
+</body>
+</html>
