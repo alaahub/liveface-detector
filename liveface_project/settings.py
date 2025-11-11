@@ -29,6 +29,16 @@ DEBUG = False # ⬅️ مهم جداً: يجب إيقاف DEBUG في بيئة ا
 # يتم قراءة النطاقات المسموح بها من متغير البيئة في Render
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1').split(',')
 
+# ... (بالقرب من DEBUG و ALLOWED_HOSTS)
+
+# إعدادات الأمان الأساسية لبيئات الاستضافة السحابية (Render)
+# 1. إخبار Django بأن الطلبات قادمة عبر وكيل SSL آمن
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# 2. السماح لـ Django بقبول طلبات CSRF من نطاق Render
+# ملاحظة: استخدم os.environ لقراءة الرابط بشكل ديناميكي
+CSRF_TRUSTED_ORIGINS = ['https://' + host for host in ALLOWED_HOSTS if host not in ['127.0.0.1', 'localhost']]
+
 
 # Application definition
 
