@@ -37,8 +37,10 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # 2. السماح لـ Django بقبول طلبات CSRF من نطاق Render
 # ملاحظة: استخدم os.environ لقراءة الرابط بشكل ديناميكي
-CSRF_TRUSTED_ORIGINS = ['https://' + host for host in ALLOWED_HOSTS if host not in ['127.0.0.1', 'localhost']]
-
+# إضافة رابط Render الصريح (يجب أن يبدأ بـ https://)
+CSRF_TRUSTED_ORIGINS = [
+    'https://liveface-detector.onrender.com'
+]
 
 # Application definition
 
