@@ -56,6 +56,9 @@ ROOT_URLCONF = 'liveface_project.urls'
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [ BASE_DIR / 'detector' / 'static' ]  # optional
 
+# تعريف مكان تجميع الملفات الثابتة (ضروري لـ collectstatic)
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 # Media (لرفع الصور)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
